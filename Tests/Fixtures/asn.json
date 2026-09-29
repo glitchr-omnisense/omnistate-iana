@@ -1,0 +1,5 @@
+{
+ "description": "RDAP bootstrap file for Autonomous System Number allocations (trimmed for the tests)",
+ "services": [[["3154-3353"], ["https://rdap.db.ripe.net/"]]],
+ "version": "1.0"
+}

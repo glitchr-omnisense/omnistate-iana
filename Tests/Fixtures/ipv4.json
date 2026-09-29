@@ -1,0 +1,24 @@
+{
+ "description": "RDAP bootstrap file for IPv4 address allocations",
+ "publication": "2019-06-07T19:00:02Z",
+ "services": [
+  [
+   [
+    "8.0.0.0/8"
+   ],
+   [
+    "https://rdap.arin.net/registry/",
+    "http://rdap.arin.net/registry/"
+   ]
+  ],
+  [
+   [
+    "193.0.0.0/8"
+   ],
+   [
+    "https://rdap.db.ripe.net/"
+   ]
+  ]
+ ],
+ "version": "1.0"
+}
