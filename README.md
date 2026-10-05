@@ -11,5 +11,9 @@ $rdap->network('193.0.6.139');  // the range, its holder, country, abuse contact
 $rdap->network('AS15169');      // an autonomous system
 ```
 
+No framework needed: the package requires `glitchr/omnistate` and `symfony/http-client`.
+`$httpClient` is the HTTP client to call with - the application's, `HttpClient::create()` in
+plain PHP, a `MockHttpClient` in a test.
+
 The bootstrap files are read once and kept a day with a cache, as IANA asks. A registrant is null where
 the registry no longer publishes it (most, since the GDPR).
