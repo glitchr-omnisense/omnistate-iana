@@ -17,3 +17,7 @@ plain PHP, a `MockHttpClient` in a test.
 
 The bootstrap files are read once and kept a day with a cache, as IANA asks. A registrant is null where
 the registry no longer publishes it (most, since the GDPR).
+
+## License
+
+MIT since 2026-10-09; earlier versions remain published under LGPL-3.0-or-later.
