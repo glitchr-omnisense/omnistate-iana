@@ -34,6 +34,9 @@ final class Rdap implements InternetRegistryInterface
     public function domain(string $name): ?Domain
     {
         $name = self::ascii($name);
+        if (!preg_match('/^(?=.{1,253}$)([a-z0-9_]([a-z0-9-]{0,61}[a-z0-9])?\.)*[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$/', $name)) {
+            return null; // not a domain name: nothing to ask
+        }
         $server = $this->bootstrap->forDomain($name);
         if (null === $server) {
             return null;
