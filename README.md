@@ -33,6 +33,10 @@ rate limit to respect), and for any use made of what it returns. The authors pub
 charge, make no commercial use of it, and accept no liability for how it is used (see
 [LICENSE](LICENSE)).
 
+## Documentation
+
+[docs/](docs/index.md): the service, the options, what it supports, how it maps the answers, errors, what was verified.
+
 ## License
 
 MIT since 2026-10-09; earlier versions remain published under LGPL-3.0-or-later.
