@@ -167,6 +167,9 @@ $omnistate->domain('Example.COM.');   // example.com
 | a registry's server: another 4xx (401, 403, 400...) | `null` (see below) |
 | a registry's server: no answer, not JSON | `UnavailableException` (`rdap.example did not answer: ...`) |
 
+> [!WARNING]
+> Known defect: a registry server's 401, 403 or other 4xx reads as `null` (not registered), and a 429 without `Retry-After` has no `retryAfter` (`Rdap.php:110-117`), where the family's rule makes a failure an exception.
+
 ## Verified, and not
 
 Tested offline: `Tests/RdapTest.php` (a domain with its registrar, IANA ID, dates, name servers
