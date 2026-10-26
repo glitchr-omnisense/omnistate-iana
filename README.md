@@ -2,7 +2,7 @@
 
 Domains, IP ranges and autonomous systems through [IANA's RDAP bootstrap](https://data.iana.org/rdap/)
 (RFC 9224) and the registry it names (RFC 9082/9083) - WHOIS's successor, in JSON, free, no key.
-For [omniscient/omnistate](../core).
+For [omnisense/omnistate](../core).
 
 ```php
 $rdap = new Rdap($httpClient, new Bootstrap($httpClient, $cache));
@@ -11,7 +11,7 @@ $rdap->network('193.0.6.139');  // the range, its holder, country, abuse contact
 $rdap->network('AS15169');      // an autonomous system
 ```
 
-No framework needed: the package requires `omniscient/omnistate` and `symfony/http-client`.
+No framework needed: the package requires `omnisense/omnistate` and `symfony/http-client`.
 `$httpClient` is the HTTP client to call with - the application's, `HttpClient::create()` in
 plain PHP, a `MockHttpClient` in a test.
 

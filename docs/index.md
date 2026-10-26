@@ -1,7 +1,7 @@
 # omnistate/iana
 
 Domains, IP ranges and autonomous systems for
-[omniscient/omnistate](https://github.com/glitchr-studio/omnistate), through
+[omnisense/omnistate](https://github.com/glitchr-omnisense/omnistate), through
 [IANA's RDAP bootstrap](https://data.iana.org/rdap/) (RFC 9224) and the registry it names (RFC
 9082/9083) - WHOIS's successor, in JSON, open. Two classes:
 
@@ -22,10 +22,10 @@ with `Accept: application/rdap+json, application/json`. The bootstrap's address 
 ## Installation
 
 ```sh
-composer require omniscient/omnistate omnistate/iana
+composer require omnisense/omnistate omnistate/iana
 ```
 
-Requires PHP 8.2, `omniscient/omnistate` (1.x) and `symfony/http-client` (6.4, 7 or 8). Suggests
+Requires PHP 8.2, `omnisense/omnistate` (1.x) and `symfony/http-client` (6.4, 7 or 8). Suggests
 `ext-intl`, to ask an international domain name in its ASCII form. In a Symfony application with
 `Omnistate\Bridge\Symfony\OmnistateBundle`, `Bootstrap` and `Rdap` are registered as soon as the
 package is installed, `Rdap` aliased as `Omnistate\Registry\InternetRegistryInterface` and given
