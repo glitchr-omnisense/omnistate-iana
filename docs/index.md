@@ -162,30 +162,27 @@ $omnistate->domain('Example.COM.');   // example.com
 |---|---|
 | a bootstrap file: HTTP 429 | `UnavailableException` (`IANA's dns bootstrap: too many calls.`), `retryAfter` from `Retry-After` (at least 1), else 60 |
 | a bootstrap file: another HTTP error, no answer, not JSON | `UnavailableException` (`IANA's dns bootstrap did not answer: ...`) |
-| a registry's server: HTTP 404 | `null`: not registered |
-| a registry's server: HTTP 429 or 5xx | `UnavailableException` (`rdap.example answered 503.`), `retryAfter` from `Retry-After`, else none |
-| a registry's server: another 4xx (401, 403, 400...) | `null` (see below) |
+| a registry's server: HTTP 404 or 410 | `null`: not registered |
+| a registry's server: HTTP 429 | `UnavailableException` (`rdap.example answered 429: too many calls.`), `retryAfter` from `Retry-After` (seconds, or an HTTP date; at least 1), else 60 |
+| a registry's server: HTTP 401, 403 or 5xx | `UnavailableException` (`rdap.example answered 503.`) |
+| a registry's server: HTTP 400 or another 4xx | `OmnistateException` with the server's reason, the RDAP error's `title` and `description` (`rdap.example refused the question (400): Bad Request Unsupported label`) |
 | a registry's server: no answer, not JSON | `UnavailableException` (`rdap.example did not answer: ...`) |
 
-> [!WARNING]
-> Known defect: a registry server's 401, 403 or other 4xx reads as `null` (not registered), and a 429 without `Retry-After` has no `retryAfter` (`Rdap.php:110-117`), where the family's rule makes a failure an exception.
+The statuses are RFC 7480's ([section 5](https://www.rfc-editor.org/rfc/rfc7480#section-5)), the
+error's body RFC 9083's ([section 6](https://www.rfc-editor.org/rfc/rfc9083#section-6)).
 
 ## Verified, and not
 
 Tested offline: `Tests/RdapTest.php` (a domain with its registrar, IANA ID, dates, name servers
 and unpublished registrant; a domain no one registered and a TLD without RDAP; an IP address with
 its range, holder and abuse contact; an autonomous system; the bootstrap preferring HTTPS and the
-most specific range; a registry down) on answers recorded in `Tests/Fixtures`, and
+most specific range; a registry down; 401, 403 and 429 with and without `Retry-After` as
+`UnavailableException`; a 400 and a 422 as an `OmnistateException` with the server's reason, a 410
+as `null`) on answers recorded in `Tests/Fixtures`, and
 `Tests/RdapContractTest.php`, omnistate's conformance suite, with the bootstrap files as
 infrastructure answers.
 
 Run live on 2026-10-25 (the example above, and the core manual's domain and network examples).
-
-Defect found in the code: `Rdap.php:110-117` - a registry server's HTTP 401, 403 or another 4xx
-than 404 and 429 is read as `null`, "not registered", and its 429 without `Retry-After` carries no
-`retryAfter`; the family's rule says both are an `UnavailableException`, the 429 with a
-`retryAfter`. The conformance suite does not catch it: its failing answers reach the bootstrap
-first, which does follow the rule.
 
 ## Responsibility
 

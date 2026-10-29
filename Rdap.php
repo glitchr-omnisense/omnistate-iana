@@ -2,6 +2,7 @@
 
 namespace Omnistate\Iana;
 
+use Omnistate\Exception\OmnistateException;
 use Omnistate\Exception\UnavailableException;
 use Omnistate\Model\Contact;
 use Omnistate\Model\Domain;
@@ -98,28 +99,57 @@ final class Rdap implements InternetRegistryInterface
         );
     }
 
-    /** @return array<string, mixed>|null null when the server does not know it */
+    /**
+     * The server's answer, or null when it does not know the object (404, 410).
+     * The family's rule otherwise (RFC 7480, 5): 401, 403, 429 and 5xx, no answer
+     * and an unreadable one are an UnavailableException - a 429's retryAfter its
+     * Retry-After (seconds or a date), else 60 s -; a question the server refuses
+     * (400 and any other 4xx) an OmnistateException with its reason (RFC 9083, 6).
+     *
+     * @return array<string, mixed>|null
+     *
+     * @throws UnavailableException
+     * @throws OmnistateException
+     */
     private function ask(string $url): ?array
     {
+        $host = parse_url($url, \PHP_URL_HOST);
         try {
             $response = $this->http->request('GET', $url, ['timeout' => $this->timeout, 'headers' => ['Accept' => 'application/rdap+json, application/json']]);
             $status = $response->getStatusCode();
-            if (404 === $status) {
+            if (404 === $status || 410 === $status) {
                 return null;
             }
-            if (429 === $status || $status >= 500) {
-                $retry = $response->getHeaders(false)['retry-after'][0] ?? null;
-
-                throw new UnavailableException(sprintf('%s answered %d.', parse_url($url, \PHP_URL_HOST), $status), is_numeric($retry) ? (int) $retry : null);
+            if (429 === $status) {
+                throw new UnavailableException(sprintf('%s answered 429: too many calls.', $host), self::retryAfter($response->getHeaders(false)['retry-after'][0] ?? null));
+            }
+            if (401 === $status || 403 === $status || $status >= 500) {
+                throw new UnavailableException(sprintf('%s answered %d.', $host, $status));
             }
             if ($status >= 400) {
-                return null;
-            }
+                $error = json_decode($response->getContent(false), true);
+                $reason = \is_array($error) ? trim(implode(' ', array_filter([self::string($error['title'] ?? null), ...array_map(self::string(...), \is_array($error['description'] ?? null) ? $error['description'] : [])]))) : '';
 
-            return $response->toArray(false);
+                throw new OmnistateException(sprintf('%s refused the question (%d)%s', $host, $status, '' !== $reason ? ': '.$reason : '.'));
+            }
+            $answer = $response->toArray(false);
         } catch (ExceptionInterface $e) {
-            throw new UnavailableException(sprintf('%s did not answer: %s', parse_url($url, \PHP_URL_HOST), $e->getMessage()), null, $e);
+            throw new UnavailableException(sprintf('%s did not answer: %s', $host, $e->getMessage()), null, $e);
         }
+
+        return $answer;
+    }
+
+    /** Retry-After in seconds (at least 1), or a date; 60 s when there is none to read. */
+    private static function retryAfter(?string $header): int
+    {
+        $header = trim((string) $header);
+        if (is_numeric($header)) {
+            return max(1, (int) $header);
+        }
+        $date = '' === $header ? false : strtotime($header);
+
+        return false === $date ? 60 : max(1, $date - time());
     }
 
     /**
