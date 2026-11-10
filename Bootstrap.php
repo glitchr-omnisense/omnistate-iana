@@ -102,7 +102,7 @@ final class Bootstrap
             if (429 === $response->getStatusCode()) {
                 $retry = $response->getHeaders(false)['retry-after'][0] ?? null;
 
-                throw new UnavailableException(sprintf('IANA\'s %s bootstrap: too many calls.', $registry), is_numeric($retry) ? max(1, (int) $retry) : 60);
+                throw new UnavailableException(sprintf('IANA\'s %s bootstrap: too many calls.', $registry), is_numeric($retry) ? max(1, (int) $retry) : 60, null, 429);
             }
             $answer = $response->toArray();
         } catch (ExceptionInterface $e) {

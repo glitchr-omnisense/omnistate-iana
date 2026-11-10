@@ -2,6 +2,8 @@
 
 namespace Omnistate\Iana;
 
+use Omnisense\Contracts\Policy\DeclaresUsagePolicyInterface;
+use Omnisense\Contracts\Policy\UsagePolicy;
 use Omnistate\Exception\OmnistateException;
 use Omnistate\Exception\UnavailableException;
 use Omnistate\Model\Contact;
@@ -18,13 +20,19 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
  * servers and DNSSEC, and its registrant when the registry still publishes
  * it; a network's holder, country and abuse contact.
  */
-final class Rdap implements InternetRegistryInterface
+final class Rdap implements InternetRegistryInterface, DeclaresUsagePolicyInterface
 {
     public function __construct(
         private readonly HttpClientInterface $http,
         private readonly Bootstrap $bootstrap,
         private readonly float $timeout = 10,
     ) {
+    }
+
+    /** Its usage policy: policy.json, beside this class. */
+    public function usagePolicy(): UsagePolicy
+    {
+        return UsagePolicy::fromFile(__DIR__.'/policy.json');
     }
 
     public function name(): string
