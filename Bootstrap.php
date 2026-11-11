@@ -18,7 +18,7 @@ final class Bootstrap
 {
     public const URL = 'https://data.iana.org/rdap/%s.json';
 
-    /** @var array<string, list<array{list<string>, list<string>}>> */
+    /** @var array<string, list<array{mixed, mixed}>> */
     private array $services = [];
 
     public function __construct(
@@ -36,8 +36,8 @@ final class Bootstrap
         for ($i = 0; $i < \count($labels); ++$i) {
             $suffix = implode('.', \array_slice($labels, $i));
             foreach ($this->services('dns') as [$entries, $urls]) {
-                if (\in_array($suffix, $entries, true)) {
-                    return self::server($urls);
+                if (\in_array($suffix, self::entries('dns', $entries), true)) {
+                    return self::server('dns', $urls);
                 }
             }
         }
@@ -54,12 +54,13 @@ final class Bootstrap
         }
         $best = null;
         $bestLength = -1;
-        foreach ($this->services(4 === \strlen($binary) ? 'ipv4' : 'ipv6') as [$ranges, $urls]) {
-            foreach ($ranges as $range) {
+        $registry = 4 === \strlen($binary) ? 'ipv4' : 'ipv6';
+        foreach ($this->services($registry) as [$ranges, $urls]) {
+            foreach (self::ranges($registry, $ranges) as $range) {
                 [$network, $length] = array_pad(explode('/', $range, 2), 2, null);
                 $length = (int) $length;
                 if ($length > $bestLength && self::contains($binary, (string) $network, $length)) {
-                    [$best, $bestLength] = [self::server($urls), $length];
+                    [$best, $bestLength] = [self::server($registry, $urls), $length];
                 }
             }
         }
@@ -71,10 +72,10 @@ final class Bootstrap
     public function forAutnum(int $number): ?string
     {
         foreach ($this->services('asn') as [$ranges, $urls]) {
-            foreach ($ranges as $range) {
+            foreach (self::ranges('asn', $ranges) as $range) {
                 [$from, $to] = array_pad(explode('-', $range, 2), 2, null);
                 if ($number >= (int) $from && $number <= (int) ($to ?? $from)) {
-                    return self::server($urls);
+                    return self::server('asn', $urls);
                 }
             }
         }
@@ -82,7 +83,7 @@ final class Bootstrap
         return null;
     }
 
-    /** @return list<array{list<string>, list<string>}> */
+    /** @return list<array{mixed, mixed}> */
     private function services(string $registry): array
     {
         return $this->services[$registry] ??= null === $this->cache
@@ -94,7 +95,7 @@ final class Bootstrap
             }));
     }
 
-    /** @return list<array{list<string>, list<string>}> */
+    /** @return list<array{mixed, mixed}> */
     private function fetch(string $registry): array
     {
         try {
@@ -113,11 +114,14 @@ final class Bootstrap
     }
 
     /**
-     * The services as RFC 9224 writes them: each a list of entries and a list
-     * of URLs, strings all; a bootstrap file of another shape is unavailable
-     * (the family's rule on a body that is not what it should be).
+     * The services as the file lists them, each its entries and its URLs as
+     * they came: a service is read when a lookup reaches it (entries(),
+     * ranges(), server()), so one of another shape fails only the lookups
+     * that need it, the others keep answering. A file whose services are not
+     * a list is unavailable (the family's rule on a body that is not what it
+     * should be).
      *
-     * @return list<array{list<string>, list<string>}>
+     * @return list<array{mixed, mixed}>
      *
      * @throws UnavailableException
      */
@@ -125,26 +129,44 @@ final class Bootstrap
     {
         $shaped = [];
         foreach (self::list($registry, $services) as $service) {
-            $service = \is_array($service) ? $service : throw self::malformed($registry);
-            $shaped[] = [self::strings($registry, $service[0] ?? false), self::strings($registry, $service[1] ?? false)];
+            if (\is_array($service) && 2 === \count($service)) {
+                $shaped[] = [$service[0] ?? null, $service[1] ?? null];
+            }
         }
 
         return $shaped;
     }
 
     /**
-     * @return list<string>
+     * A DNS service's entries, as in_array() read them: a list (what is not a
+     * string in it never matches); anything else is another shape.
+     *
+     * @return array<mixed>
      *
      * @throws UnavailableException
      */
-    private static function strings(string $registry, mixed $values): array
+    private static function entries(string $registry, mixed $entries): array
     {
-        $strings = [];
-        foreach (self::list($registry, $values) as $value) {
-            $strings[] = \is_string($value) ? $value : throw self::malformed($registry);
-        }
+        return \is_array($entries) ? $entries : throw self::malformed($registry);
+    }
 
-        return $strings;
+    /**
+     * An IP or AS service's ranges, as foreach and explode() read them: what
+     * is not an array has none, a number is its text; a range of another
+     * shape fails the lookup that reaches it.
+     *
+     * @return \Generator<string>
+     *
+     * @throws UnavailableException
+     */
+    private static function ranges(string $registry, mixed $ranges): \Generator
+    {
+        if (!\is_array($ranges)) {
+            return;
+        }
+        foreach ($ranges as $range) {
+            yield \is_string($range) || \is_int($range) || \is_float($range) ? (string) $range : throw self::malformed($registry);
+        }
     }
 
     /**
@@ -169,12 +191,18 @@ final class Bootstrap
     }
 
     /**
-     * HTTPS first; a trailing slash, so paths are appended.
+     * HTTPS first; a trailing slash, so paths are appended. URLs that are not
+     * a list of strings are another shape, refused for the lookup that matched them.
      *
-     * @param list<string> $urls
+     * @throws UnavailableException
      */
-    private static function server(array $urls): ?string
+    private static function server(string $registry, mixed $urls): ?string
     {
+        $strings = [];
+        foreach (\is_array($urls) ? $urls : throw self::malformed($registry) as $url) {
+            $strings[] = \is_string($url) ? $url : throw self::malformed($registry);
+        }
+        $urls = $strings;
         usort($urls, fn (string $a, string $b) => str_starts_with($b, 'https:') <=> str_starts_with($a, 'https:'));
         $url = $urls[0] ?? null;
 

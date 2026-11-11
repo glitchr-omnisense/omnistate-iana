@@ -154,6 +154,26 @@ final class RdapTest extends TestCase
         }
     }
 
+    /** A bootstrap service of another shape fails the lookups that reach it; the well-formed ones keep answering. */
+    public function testABootstrapServiceOfAnotherShapeFailsOnlyTheLookupsThatReachIt(): void
+    {
+        $bootstrap = new Bootstrap($this->client([
+            'https://data.iana.org/rdap/dns.json' => new MockResponse('{"services":[[["broken"],"https://rdap.broken.example/"],[["dev"],["https://pubapi.registry.google/rdap/"]],"not a service"]}'),
+            'https://data.iana.org/rdap/asn.json' => new MockResponse('{"services":[[["3154-3353"],["https://rdap.db.ripe.net/"]],[[["5000-6000"]],["https://rdap.broken.example/"]]]}'),
+        ]));
+
+        self::assertSame('https://pubapi.registry.google/rdap/', $bootstrap->forDomain('glitchr.dev'));
+        self::assertSame('https://rdap.db.ripe.net/', $bootstrap->forAutnum(3333));
+        foreach (['the URLs of a domain' => static fn () => $bootstrap->forDomain('www.broken'), 'the range of an AS' => static fn () => $bootstrap->forAutnum(5500)] as $shape => $lookup) {
+            try {
+                $lookup();
+                self::fail($shape.': answered');
+            } catch (UnavailableException $e) {
+                self::assertStringContainsString('another shape', $e->getMessage(), $shape);
+            }
+        }
+    }
+
     /** @param array<string, MockResponse> $overrides */
     private function rdap(array $overrides = []): Rdap
     {

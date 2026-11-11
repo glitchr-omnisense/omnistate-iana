@@ -18,8 +18,8 @@
 - An answer of another shape than its RFC's is an `UnavailableException` (the family's rule on a
   body that is not what it should be), where PHP threw a `TypeError`: an RDAP object whose `status`,
   `nameservers` or an entity's `roles` is not a list, a vCard property named by a list; a bootstrap
-  file whose `services` is not a list, or a service whose entries or URLs are not lists of strings
-  (refused when the file is read, every service checked, rather than when a lookup reached it).
+  file whose `services` is not a list; a service whose entries, ranges or URLs are of another shape,
+  for the lookups that reach it (as before, the well-formed services keep answering).
 - An RDAP server's HTTP 401 or 403 is an `UnavailableException`, not `null` ("not registered"),
   as the family's rule has it; its 429 without `Retry-After` carries `retryAfter` 60, and a
   `Retry-After` written as an HTTP date is read as the seconds until it.
