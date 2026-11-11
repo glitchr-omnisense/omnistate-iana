@@ -60,13 +60,13 @@ final class Rdap implements InternetRegistryInterface, DeclaresUsagePolicyInterf
             name: mb_strtolower((string) ($answer['ldhName'] ?? $name)),
             source: $this->name(),
             handle: self::string($answer['handle'] ?? null),
-            statuses: array_values(array_map('strval', $answer['status'] ?? [])),
+            statuses: array_values(array_map('strval', self::list($answer['status'] ?? null))),
             registrar: self::contact(self::entity($answer, 'registrar')),
             registrant: self::contact(self::entity($answer, 'registrant')),
             registeredAt: $events['registration'] ?? null,
             expiresAt: $events['expiration'] ?? null,
             changedAt: $events['last changed'] ?? null,
-            nameservers: array_values(array_filter(array_map(fn ($ns) => \is_array($ns) && isset($ns['ldhName']) ? mb_strtolower((string) $ns['ldhName']) : null, $answer['nameservers'] ?? []))),
+            nameservers: array_values(array_filter(array_map(fn ($ns) => \is_array($ns) && isset($ns['ldhName']) ? mb_strtolower((string) $ns['ldhName']) : null, self::list($answer['nameservers'] ?? null)))),
             dnssec: true === ($answer['secureDNS']['delegationSigned'] ?? false),
             server: $server,
             raw: $answer,
@@ -174,7 +174,7 @@ final class Rdap implements InternetRegistryInterface, DeclaresUsagePolicyInterf
             if (!\is_array($entity)) {
                 continue;
             }
-            if (\in_array($role, $entity['roles'] ?? [], true)) {
+            if (\in_array($role, self::list($entity['roles'] ?? null), true)) {
                 return $entity;
             }
             if ($found = self::entity($entity, $role)) {
@@ -194,7 +194,7 @@ final class Rdap implements InternetRegistryInterface, DeclaresUsagePolicyInterf
         $card = [];
         foreach ($entity['vcardArray'][1] ?? [] as $property) {
             if (\is_array($property) && isset($property[0], $property[3])) {
-                $card[$property[0]] ??= [$property[1] ?? [], $property[3]];
+                $card[self::key($property[0])] ??= [$property[1] ?? [], $property[3]];
             }
         }
         $text = fn (string $key) => isset($card[$key]) && \is_string($card[$key][1]) && '' !== trim($card[$key][1]) ? trim($card[$key][1]) : null;
@@ -258,6 +258,45 @@ final class Rdap implements InternetRegistryInterface, DeclaresUsagePolicyInterf
         }
 
         return $name;
+    }
+
+    /**
+     * A list or an object of the answer (null: none); anything else where one
+     * belongs is an answer of another shape (RFC 9083).
+     *
+     * @return array<mixed>
+     *
+     * @throws UnavailableException
+     */
+    private static function list(mixed $value): array
+    {
+        return match (true) {
+            null === $value => [],
+            \is_array($value) => $value,
+            default => throw self::malformed(),
+        };
+    }
+
+    /**
+     * A vCard property's name as PHP made it a key: a string or an integer as
+     * it is, a number or a boolean as an integer; a list or an object is an
+     * answer of another shape.
+     *
+     * @throws UnavailableException
+     */
+    private static function key(mixed $value): string|int
+    {
+        return match (true) {
+            \is_string($value), \is_int($value) => $value,
+            \is_float($value), \is_bool($value) => (int) $value,
+            default => throw self::malformed(),
+        };
+    }
+
+    /** The family's rule on a body that is not what it should be (docs/providers.md). */
+    private static function malformed(): UnavailableException
+    {
+        return new UnavailableException('The RDAP server answered an object of another shape than RFC 9083\'s.');
     }
 
     private static function string(mixed $value): ?string

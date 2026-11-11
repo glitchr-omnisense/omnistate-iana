@@ -129,6 +129,27 @@ final class RdapTest extends TestCase
         self::assertNull($this->rdap(['https://pubapi.registry.google/rdap/domain/glitchr.dev' => new MockResponse('', ['http_code' => 410])])->domain('glitchr.dev'), 'gone: not registered');
     }
 
+    /** An answer whose fields are not of their RFC's shapes is unavailable, as the family's rule has it. */
+    public function testAnAnswerOfAnotherShapeIsUnavailable(): void
+    {
+        $domain = json_decode((string) file_get_contents(__DIR__.'/Fixtures/domain.json'), true);
+        self::assertIsArray($domain);
+        $domain['status'] = 'active';
+        $answers = [
+            'a status that is not a list' => ['https://pubapi.registry.google/rdap/domain/glitchr.dev' => new MockResponse(json_encode($domain, \JSON_THROW_ON_ERROR))],
+            'bootstrap services that are not a list' => ['https://data.iana.org/rdap/dns.json' => new MockResponse('{"services":"none"}')],
+            'a bootstrap service whose URLs are not strings' => ['https://data.iana.org/rdap/dns.json' => new MockResponse('{"services":[[["dev"],[["https://pubapi.registry.google/rdap/"]]]]}')],
+        ];
+        foreach ($answers as $shape => $overrides) {
+            try {
+                $this->rdap($overrides)->domain('glitchr.dev');
+                self::fail($shape.': answered');
+            } catch (UnavailableException $e) {
+                self::assertStringContainsString('another shape', $e->getMessage(), $shape);
+            }
+        }
+    }
+
     /** @param array<string, MockResponse> $overrides */
     private function rdap(array $overrides = []): Rdap
     {

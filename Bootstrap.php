@@ -87,11 +87,11 @@ final class Bootstrap
     {
         return $this->services[$registry] ??= null === $this->cache
             ? $this->fetch($registry)
-            : $this->cache->get('omnistate.iana.bootstrap.'.$registry, function (ItemInterface $item) use ($registry) {
+            : self::shaped($registry, $this->cache->get('omnistate.iana.bootstrap.'.$registry, function (ItemInterface $item) use ($registry) {
                 $item->expiresAfter(86400);
 
                 return $this->fetch($registry);
-            });
+            }));
     }
 
     /** @return list<array{list<string>, list<string>}> */
@@ -109,7 +109,63 @@ final class Bootstrap
             throw new UnavailableException(sprintf('IANA\'s %s bootstrap did not answer: %s', $registry, $e->getMessage()), null, $e);
         }
 
-        return array_values(array_filter($answer['services'] ?? [], fn ($service) => \is_array($service) && 2 === \count($service)));
+        return self::shaped($registry, array_values(array_filter(self::list($registry, $answer['services'] ?? null), fn ($service) => \is_array($service) && 2 === \count($service))));
+    }
+
+    /**
+     * The services as RFC 9224 writes them: each a list of entries and a list
+     * of URLs, strings all; a bootstrap file of another shape is unavailable
+     * (the family's rule on a body that is not what it should be).
+     *
+     * @return list<array{list<string>, list<string>}>
+     *
+     * @throws UnavailableException
+     */
+    private static function shaped(string $registry, mixed $services): array
+    {
+        $shaped = [];
+        foreach (self::list($registry, $services) as $service) {
+            $service = \is_array($service) ? $service : throw self::malformed($registry);
+            $shaped[] = [self::strings($registry, $service[0] ?? false), self::strings($registry, $service[1] ?? false)];
+        }
+
+        return $shaped;
+    }
+
+    /**
+     * @return list<string>
+     *
+     * @throws UnavailableException
+     */
+    private static function strings(string $registry, mixed $values): array
+    {
+        $strings = [];
+        foreach (self::list($registry, $values) as $value) {
+            $strings[] = \is_string($value) ? $value : throw self::malformed($registry);
+        }
+
+        return $strings;
+    }
+
+    /**
+     * A list of the file (null: none), its items in order.
+     *
+     * @return list<mixed>
+     *
+     * @throws UnavailableException
+     */
+    private static function list(string $registry, mixed $value): array
+    {
+        return match (true) {
+            null === $value => [],
+            \is_array($value) => array_values($value),
+            default => throw self::malformed($registry),
+        };
+    }
+
+    private static function malformed(string $registry): UnavailableException
+    {
+        return new UnavailableException(sprintf('IANA\'s %s bootstrap answered services of another shape than RFC 9224\'s.', $registry));
     }
 
     /** HTTPS first; a trailing slash, so paths are appended. @param list<string> $urls */
