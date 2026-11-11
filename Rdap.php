@@ -57,17 +57,17 @@ final class Rdap implements InternetRegistryInterface, DeclaresUsagePolicyInterf
         $events = self::events($answer);
 
         return new Domain(
-            name: mb_strtolower((string) ($answer['ldhName'] ?? $name)),
+            name: mb_strtolower(self::cast($answer['ldhName'] ?? $name)),
             source: $this->name(),
             handle: self::string($answer['handle'] ?? null),
-            statuses: array_values(array_map('strval', self::list($answer['status'] ?? null))),
+            statuses: array_values(array_map(self::cast(...), self::list($answer['status'] ?? null))),
             registrar: self::contact(self::entity($answer, 'registrar')),
             registrant: self::contact(self::entity($answer, 'registrant')),
             registeredAt: $events['registration'] ?? null,
             expiresAt: $events['expiration'] ?? null,
             changedAt: $events['last changed'] ?? null,
-            nameservers: array_values(array_filter(array_map(fn ($ns) => \is_array($ns) && isset($ns['ldhName']) ? mb_strtolower((string) $ns['ldhName']) : null, self::list($answer['nameservers'] ?? null)))),
-            dnssec: true === ($answer['secureDNS']['delegationSigned'] ?? false),
+            nameservers: array_values(array_filter(array_map(fn ($ns) => \is_array($ns) && isset($ns['ldhName']) ? mb_strtolower(self::cast($ns['ldhName'])) : null, self::list($answer['nameservers'] ?? null)))),
+            dnssec: true === (self::at($answer, 'secureDNS', 'delegationSigned') ?? false),
             server: $server,
             raw: $answer,
         );
@@ -89,15 +89,15 @@ final class Rdap implements InternetRegistryInterface, DeclaresUsagePolicyInterf
         $events = self::events($answer);
 
         return new Network(
-            handle: (string) ($answer['handle'] ?? $address),
+            handle: self::cast($answer['handle'] ?? $address),
             source: $this->name(),
             name: self::string($answer['name'] ?? null),
             type: self::string($answer['type'] ?? null),
             country: self::string($answer['country'] ?? null),
             startAddress: self::string($answer['startAddress'] ?? null),
             endAddress: self::string($answer['endAddress'] ?? null),
-            startAutnum: isset($answer['startAutnum']) ? (int) $answer['startAutnum'] : null,
-            endAutnum: isset($answer['endAutnum']) ? (int) $answer['endAutnum'] : null,
+            startAutnum: isset($answer['startAutnum']) ? self::integer($answer['startAutnum']) : null,
+            endAutnum: isset($answer['endAutnum']) ? self::integer($answer['endAutnum']) : null,
             registrant: self::contact(self::entity($answer, 'registrant')),
             abuse: self::contact(self::entity($answer, 'abuse')),
             registeredAt: $events['registration'] ?? null,
@@ -114,7 +114,7 @@ final class Rdap implements InternetRegistryInterface, DeclaresUsagePolicyInterf
      * Retry-After (seconds or a date), else 60 s -; a question the server refuses
      * (400 and any other 4xx) an OmnistateException with its reason (RFC 9083, 6).
      *
-     * @return array<string, mixed>|null
+     * @return array<mixed>|null
      *
      * @throws UnavailableException
      * @throws OmnistateException
@@ -164,13 +164,13 @@ final class Rdap implements InternetRegistryInterface, DeclaresUsagePolicyInterf
      * The first entity with that role, looked for among nested entities too
      * (a registrar's abuse contact sits inside the registrar).
      *
-     * @param array<string, mixed> $object
+     * @param array<mixed> $object
      *
-     * @return array<string, mixed>|null
+     * @return array<mixed>|null
      */
     private static function entity(array $object, string $role): ?array
     {
-        foreach ($object['entities'] ?? [] as $entity) {
+        foreach (self::items($object['entities'] ?? null) as $entity) {
             if (!\is_array($entity)) {
                 continue;
             }
@@ -185,14 +185,14 @@ final class Rdap implements InternetRegistryInterface, DeclaresUsagePolicyInterf
         return null;
     }
 
-    /** @param array<string, mixed>|null $entity */
+    /** @param array<mixed>|null $entity */
     private static function contact(?array $entity): ?Contact
     {
         if (null === $entity) {
             return null;
         }
         $card = [];
-        foreach ($entity['vcardArray'][1] ?? [] as $property) {
+        foreach (self::items(self::at($entity, 'vcardArray', 1)) as $property) {
             if (\is_array($property) && isset($property[0], $property[3])) {
                 $card[self::key($property[0])] ??= [$property[1] ?? [], $property[3]];
             }
@@ -201,16 +201,16 @@ final class Rdap implements InternetRegistryInterface, DeclaresUsagePolicyInterf
         $country = null;
         if (isset($card['adr'])) {
             [$parameters, $address] = $card['adr'];
-            $country = \is_array($parameters) && isset($parameters['cc']) ? (string) $parameters['cc'] : (\is_array($address) ? (self::string(end($address)) ?: null) : null);
+            $country = \is_array($parameters) && isset($parameters['cc']) ? self::cast($parameters['cc']) : (\is_array($address) ? (self::string(end($address)) ?: null) : null);
         }
         $ianaId = null;
-        foreach ($entity['publicIds'] ?? [] as $id) {
+        foreach (self::items($entity['publicIds'] ?? null) as $id) {
             if (\is_array($id) && 'IANA Registrar ID' === ($id['type'] ?? null)) {
-                $ianaId = (string) $id['identifier'];
+                $ianaId = self::cast($id['identifier'] ?? null);
             }
         }
         $url = null;
-        foreach ($entity['links'] ?? [] as $link) {
+        foreach (self::items($entity['links'] ?? null) as $link) {
             if (\is_array($link) && 'about' === ($link['rel'] ?? null)) {
                 $url = self::string($link['href'] ?? null);
             }
@@ -231,17 +231,17 @@ final class Rdap implements InternetRegistryInterface, DeclaresUsagePolicyInterf
     }
 
     /**
-     * @param array<string, mixed> $object
+     * @param array<mixed> $object
      *
      * @return array<string, \DateTimeImmutable>
      */
     private static function events(array $object): array
     {
         $events = [];
-        foreach ($object['events'] ?? [] as $event) {
+        foreach (self::items($object['events'] ?? null) as $event) {
             if (\is_array($event) && isset($event['eventAction'], $event['eventDate'])) {
                 try {
-                    $events[(string) $event['eventAction']] ??= new \DateTimeImmutable((string) $event['eventDate']);
+                    $events[self::cast($event['eventAction'])] ??= new \DateTimeImmutable(self::cast($event['eventDate']));
                 } catch (\Exception) {
                 }
             }
@@ -291,6 +291,48 @@ final class Rdap implements InternetRegistryInterface, DeclaresUsagePolicyInterf
             \is_float($value), \is_bool($value) => (int) $value,
             default => throw self::malformed(),
         };
+    }
+
+    /**
+     * $value[$key][...] ?? null, as PHP reads it: an array's item, a string's
+     * character at an integer offset, null for anything else.
+     */
+    private static function at(mixed $value, string|int ...$keys): mixed
+    {
+        foreach ($keys as $key) {
+            if (\is_array($value)) {
+                $value = $value[$key] ?? null;
+            } elseif (\is_string($value) && \is_int($key)) {
+                $value = $value[$key] ?? null;
+            } else {
+                return null;
+            }
+        }
+
+        return $value;
+    }
+
+    /**
+     * What a foreach over the answer's value goes through: the array, nothing
+     * for anything else (PHP warned and went through nothing).
+     *
+     * @return array<mixed>
+     */
+    private static function items(mixed $value): array
+    {
+        return \is_array($value) ? $value : [];
+    }
+
+    /** (string) of a scalar, as the answer's values were cast: "" for null, and for an array where PHP gave "Array". */
+    private static function cast(mixed $value): string
+    {
+        return \is_scalar($value) ? (string) $value : '';
+    }
+
+    /** (int) of a scalar, 0 for anything else. */
+    private static function integer(mixed $value): int
+    {
+        return \is_scalar($value) ? (int) $value : 0;
     }
 
     /** The family's rule on a body that is not what it should be (docs/providers.md). */

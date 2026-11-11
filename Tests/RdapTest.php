@@ -18,12 +18,13 @@ final class RdapTest extends TestCase
     public function testADomain(): void
     {
         $domain = $this->rdap()->domain('Glitchr.DEV.');
+        self::assertNotNull($domain);
 
         self::assertSame('glitchr.dev', $domain->name);
-        self::assertSame('Gandi SAS', $domain->registrar->name);
+        self::assertSame('Gandi SAS', $domain->registrar?->name);
         self::assertSame('81', $domain->registrar->ianaId);
-        self::assertSame('2022-05-19', $domain->registeredAt->format('Y-m-d'));
-        self::assertSame('2027-05-19', $domain->expiresAt->format('Y-m-d'));
+        self::assertSame('2022-05-19', $domain->registeredAt?->format('Y-m-d'));
+        self::assertSame('2027-05-19', $domain->expiresAt?->format('Y-m-d'));
         self::assertSame(['ns-1-b.gandi.net', 'ns-210-c.gandi.net', 'ns-238-a.gandi.net'], $domain->nameservers);
         self::assertSame(['client transfer prohibited'], $domain->statuses);
         self::assertFalse($domain->dnssec);
@@ -40,19 +41,21 @@ final class RdapTest extends TestCase
     public function testAnIpAddress(): void
     {
         $network = $this->rdap()->network('193.0.6.139');
+        self::assertNotNull($network);
 
         self::assertSame('RIPE-NCC', $network->name);
         self::assertSame('NL', $network->country);
         self::assertSame('ASSIGNED PA', $network->type);
         self::assertSame(['193.0.0.0', '193.0.7.255'], [$network->startAddress, $network->endAddress]);
-        self::assertStringContainsString('RIPE NCC', $network->registrant->name);
-        self::assertSame('abuse@ripe.net', $network->abuse->email);
+        self::assertStringContainsString('RIPE NCC', (string) $network->registrant?->name);
+        self::assertSame('abuse@ripe.net', $network->abuse?->email);
         self::assertSame('https://rdap.db.ripe.net/', $network->server);
     }
 
     public function testAnAutonomousSystem(): void
     {
         $network = $this->rdap()->network('AS3333');
+        self::assertNotNull($network);
 
         self::assertSame('AS3333', $network->handle);
         self::assertSame(3333, $network->startAutnum);
@@ -96,6 +99,7 @@ final class RdapTest extends TestCase
         }
     }
 
+    /** @return iterable<string, array{MockResponse, ?int}> */
     public static function refusals(): iterable
     {
         yield '401' => [new MockResponse('', ['http_code' => 401]), null];
@@ -181,7 +185,7 @@ final class RdapTest extends TestCase
                 return new MockResponse('{}', ['http_code' => 404]);
             }
 
-            return new MockResponse(file_get_contents(__DIR__.'/Fixtures/'.$routes[$url]), ['http_code' => str_contains($routes[$url], 'missing') ? 404 : 200]);
+            return new MockResponse((string) file_get_contents(__DIR__.'/Fixtures/'.$routes[$url]), ['http_code' => str_contains($routes[$url], 'missing') ? 404 : 200]);
         });
     }
 }

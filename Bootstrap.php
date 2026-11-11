@@ -168,7 +168,11 @@ final class Bootstrap
         return new UnavailableException(sprintf('IANA\'s %s bootstrap answered services of another shape than RFC 9224\'s.', $registry));
     }
 
-    /** HTTPS first; a trailing slash, so paths are appended. @param list<string> $urls */
+    /**
+     * HTTPS first; a trailing slash, so paths are appended.
+     *
+     * @param list<string> $urls
+     */
     private static function server(array $urls): ?string
     {
         usort($urls, fn (string $a, string $b) => str_starts_with($b, 'https:') <=> str_starts_with($a, 'https:'));

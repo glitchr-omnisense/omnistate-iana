@@ -19,6 +19,7 @@ final class RdapContractTest extends TestCase
         return new Rdap($http, new Bootstrap($http));
     }
 
+    /** @return array<string, \Closure(): MockResponse> */
     protected function recordedAnswers(): array
     {
         return $this->infrastructureAnswers() + [
@@ -27,6 +28,7 @@ final class RdapContractTest extends TestCase
         ];
     }
 
+    /** @return array<string, \Closure(): MockResponse> */
     protected function infrastructureAnswers(): array
     {
         return [

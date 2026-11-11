@@ -11,6 +11,9 @@
   wait for its `retryAfter`. A registry's RDAP server answering 429 holds nothing: it is not IANA.
 - PHPStan at level max, its baseline what the package had on 2026-11-10.
 
+### Changed
+- PHPStan at level max with an empty baseline, types only.
+
 ### Fixed
 - An answer of another shape than its RFC's is an `UnavailableException` (the family's rule on a
   body that is not what it should be), where PHP threw a `TypeError`: an RDAP object whose `status`,
