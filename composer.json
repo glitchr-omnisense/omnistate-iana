@@ -7,19 +7,21 @@
     "authors": [{"name": "Marco Meyer", "email": "marco.meyer@glitchr.io"}],
     "require": {
         "php": ">=8.2",
-        "omnisense/contracts": "^1.0@dev",
-        "omnisense/omnistate": "^1.0@dev",
+        "omnisense/contracts": "^1.0",
+        "omnisense/omnistate": "^1.0",
         "symfony/http-client": "^6.4|^7.0|^8.0"
     },
     "require-dev": {
         "phpstan/phpstan": "^2.1",
-        "phpunit/phpunit": "^11.0"
+        "phpunit/phpunit": "^11.0",
+        "symfony/cache-contracts": "^3.0"
     },
     "suggest": {
-        "ext-intl": "International domain names (idn_to_ascii)"
+        "ext-intl": "International domain names (idn_to_ascii)",
+        "symfony/cache-contracts": "Bootstrap keeps IANA's bootstrap files a while (a CacheInterface, e.g. symfony/cache)"
     },
     "autoload": {"psr-4": {"Omnistate\\Iana\\": ""}, "exclude-from-classmap": ["/Tests/"]},
     "autoload-dev": {"psr-4": {"Omnistate\\Iana\\Tests\\": "Tests/"}},
-    "extra": {"omnisense": {"policy": "policy.json"}},
+    "extra": {"branch-alias": {"dev-1.x": "1.x-dev"}, "omnisense": {"policy": "policy.json"}},
     "config": {"sort-packages": true}
 }

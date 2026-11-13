@@ -1,6 +1,8 @@
 # Changelog
 
-## Unreleased (1.x)
+## [Unreleased]
+
+## [1.0.0] - 2026-11-13
 
 ### Added
 - `policy.json`, the register's usage policy in omnisense/contracts' schema (named in
@@ -12,6 +14,8 @@
 - PHPStan at level max, its baseline what the package had on 2026-11-10.
 
 ### Changed
+- Requires `omnisense/contracts: ^1.0`, `omnisense/omnistate: ^1.0`: stable versions, so `composer require omnistate/iana` installs in a project at the default minimum-stability. `extra.branch-alias` names 1.x (`1.x-dev`); the CI (`.github/workflows/ci.yml`, glitchr-studio/ci's shared workflow) and the release on a tag (`release.yml`).
+- `symfony/cache-contracts` in require-dev and suggest: `Bootstrap` takes a `CacheInterface`, which PHPStan could not find with the package alone.
 - PHPStan at level max with an empty baseline, types only.
 
 ### Fixed

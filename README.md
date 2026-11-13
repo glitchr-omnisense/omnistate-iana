@@ -18,6 +18,14 @@ plain PHP, a `MockHttpClient` in a test.
 The bootstrap files are read once and kept a day with a cache, as IANA asks. A registrant is null where
 the registry no longer publishes it (most, since the GDPR).
 
+## Install
+
+```sh
+composer require omnistate/iana
+```
+
+It brings the family's core, `omnisense/omnistate`, and `omnisense/contracts` with it. No account and no key: RDAP is open ([`policy.json`](policy.json)). A cache (`symfony/cache` or any `CacheInterface`) keeps the bootstrap files a day.
+
 ## Responsibility
 
 This package is an independent, unofficial client: it is not affiliated with, endorsed by or
